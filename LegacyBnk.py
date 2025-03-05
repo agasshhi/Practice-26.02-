@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
+import random
+import time
 
 
 # --- Data Model ---
@@ -45,8 +47,43 @@ class Bank:
 bank = Bank()
 
 
-# --- GUI Application ---
+class Confetti(tk.Canvas):
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.particles = []
+        self.width = self.winfo_width()
+        self.height = self.winfo_height()
 
+    def generate_confetti(self):
+        """Generate random confetti particles."""
+        for _ in range(100):
+            x = random.randint(0, self.width)
+            y = random.randint(0, self.height)
+            color = random.choice(['red', 'yellow', 'blue', 'green', 'purple', 'orange'])
+            size = random.randint(5, 10)
+            particle = {'x': x, 'y': y, 'dx': random.randint(-5, 5), 'dy': random.randint(1, 5), 'color': color, 'size': size}
+            particle_id = self.create_oval(particle['x'] - particle['size'], particle['y'] - particle['size'],
+                                           particle['x'] + particle['size'], particle['y'] + particle['size'],
+                                           fill=particle['color'], outline=particle['color'])
+            particle['id'] = particle_id  # Store the ID for movement
+            self.particles.append(particle)
+
+    def update(self):
+        """Update the confetti particles position."""
+        for particle in self.particles:
+            self.move_particle(particle)
+        self.after(30, self.update)
+
+    def move_particle(self, particle):
+        """Move each particle."""
+        self.move(particle['id'], particle['dx'], particle['dy'])  # Move by the stored ID
+
+    def draw(self):
+        """Draw the confetti on the canvas."""
+        self.update()  # Start updating the particles' positions
+
+
+# --- GUI Application ---
 class BankingGUI(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -90,6 +127,8 @@ class BankingGUI(tk.Tk):
             if not bank.get_client(name):
                 bank.add_client(name)
                 messagebox.showinfo("Registration", f"Client '{name}' registered successfully.")
+            else:
+                messagebox.showinfo("Login", f"Welcome back, {name}!")
         else:
             messagebox.showerror("Error", "Client name is required.")
             self.destroy()
@@ -102,12 +141,27 @@ class BankingGUI(tk.Tk):
         self.create_login_frame()
 
     # --- Client Dashboard ---
+    def show_welcome_message(self):
+        """Display a fun, animated welcome message."""
+        welcome_label = tk.Label(self.active_frame, text=f"Welcome, {self.current_client_name}!", font=("Arial", 20),
+                                 fg="green")
+        welcome_label.pack(pady=5)
+
+        # Simulate text typing effect
+        text = "Welcome to the Future of Banking!"
+        for i in range(len(text) + 1):
+            welcome_label.config(text=text[:i])
+            self.update()  # Update UI with each step
+            time.sleep(0.05)  # Delay to create typing effect
+
     def create_client_frame(self):
         self.active_frame = tk.Frame(self)
         self.active_frame.pack(pady=10)
-        tk.Label(self.active_frame, text=f"Client Dashboard - {self.current_client_name}", font=("Arial", 14)).pack(
-            pady=5)
 
+        # Add welcome message animation
+        self.show_welcome_message()
+
+        # Trigger confetti when actions are successful
         tk.Button(self.active_frame, text="Add Account", command=self.client_add_account, width=20).pack(pady=5)
         tk.Button(self.active_frame, text="Query Balance", command=self.client_query_balance, width=20).pack(pady=5)
         tk.Button(self.active_frame, text="Back", command=self.logout, width=20).pack(pady=5)
@@ -125,6 +179,7 @@ class BankingGUI(tk.Tk):
             except ValueError:
                 balance = 0.0
             client.add_account(account_id, balance)
+            trigger_confetti(self.active_frame)  # Trigger confetti effect on success
             messagebox.showinfo("Success", f"Account '{account_id}' added with balance ${balance}.")
 
     def client_query_balance(self):
@@ -188,6 +243,14 @@ class BankingGUI(tk.Tk):
             accounts_info = ", ".join(f"{acc}: ${bal}" for acc, bal in client.accounts.items())
             info = f"{name} - Accounts: {accounts_info if accounts_info else 'None'}"
             self.client_listbox.insert(tk.END, info)
+
+
+# Function to trigger confetti animation
+def trigger_confetti(frame):
+    confetti = Confetti(frame, width=500, height=400)
+    confetti.generate_confetti()
+    confetti.pack(fill=tk.BOTH, expand=True)
+    confetti.draw()
 
 
 if __name__ == "__main__":
